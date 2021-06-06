@@ -14,8 +14,8 @@ public class BasicTypeRegistry {
 
     public static void setTypes() {
         types.put("java.lang.String","VARCHAR");
-        types.put("java.lang.Long","BIGINT");
-        types.put("java.lang.Integer","BIGINT");
+        types.put("java.lang.Long","INTEGER");
+        types.put("java.lang.Integer","INTEGER");
         types.put("java.lang.Boolean","BOOLEAN");
     }
 

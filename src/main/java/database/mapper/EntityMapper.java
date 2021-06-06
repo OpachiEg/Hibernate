@@ -2,6 +2,7 @@ package database.mapper;
 
 import annotations.Entity;
 import annotations.Id;
+import annotations.OneToOne;
 import database.registry.BasicTypeRegistry;
 import database.util.EntityUtil;
 import database.util.RequestUtil;
@@ -21,6 +22,7 @@ public class EntityMapper<T> implements Mapper {
     private T entity;
     private String tableName;
     private List<Field> fields;
+    private Map<String, String> columnNames;
 
     public EntityMapper(T entity) throws IllegalAccessException, InstantiationException {
         this.entity = entity;
@@ -28,6 +30,7 @@ public class EntityMapper<T> implements Mapper {
         EntityUtil<T> entityUtil = new EntityUtil(entity);
         this.tableName = entityUtil.getTableName();
         this.fields = entityUtil.getFields();
+        this.columnNames = entityUtil.getColumnNames();
     }
 
     /* ------------------------------------------------ */
@@ -43,14 +46,13 @@ public class EntityMapper<T> implements Mapper {
 
         for (Field field : fields) {
             field.setAccessible(true);
-            Annotation annotation = field.getAnnotation(Id.class);
-            stringBuilder.append(field.getName() + ",");
+            stringBuilder.append(columnNames.get(field.getName()) + ",");
         }
 
         return RequestUtil.deleteExtraComma(stringBuilder);
     }
 
-    private String valueFieldsToString() throws IllegalAccessException {
+    public String valueFieldsToString() throws IllegalAccessException {
         StringBuilder stringBuilder = new StringBuilder();
 
         for (Field field : fields) {
@@ -70,9 +72,10 @@ public class EntityMapper<T> implements Mapper {
         List<T> result = new LinkedList<>();
         boolean read = false;
 
-        while(read=resultSet.next()) {
+        while (read = resultSet.next()) {
             result.add(mapResultSetToEntity(resultSet));
         }
+
         return result;
     }
 
@@ -82,18 +85,14 @@ public class EntityMapper<T> implements Mapper {
 
         while (i <= fields.size() - 1) {
             Field field = fields.get(i);
+            Field field1 = entity.getClass().getDeclaredField(field.getName());
+            field1.setAccessible(true);
             if (field.getType().getTypeName().equals("java.lang.Integer")) {
-                Field f = entity.getClass().getDeclaredField(field.getName());
-                f.setAccessible(true);
-                f.set(entity, resultSet.getInt(field.getName()));
+                field1.set(entity, resultSet.getInt(columnNames.get(field.getName())));
             } else if (field.getType().getTypeName().equals("java.lang.String")) {
-                Field f = entity.getClass().getDeclaredField(field.getName());
-                f.setAccessible(true);
-                f.set(entity, resultSet.getString(field.getName()));
+                field1.set(entity, resultSet.getString(columnNames.get(field.getName())));
             } else if (field.getType().getTypeName().equals("java.lang.Boolean")) {
-                Field f = entity.getClass().getDeclaredField(field.getName());
-                f.setAccessible(true);
-                f.set(entity, resultSet.getBoolean(field.getName()));
+                field1.set(entity, resultSet.getBoolean(columnNames.get(field.getName())));
             }
             i++;
         }

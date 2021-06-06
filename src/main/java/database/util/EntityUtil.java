@@ -2,21 +2,25 @@ package database.util;
 
 import annotations.Column;
 import annotations.Entity;
+import annotations.Id;
 import annotations.Table;
-import exceptions.EntityAnnotationNotFound;
 import exceptions.NotFoundException;
 
 import java.io.File;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 public class EntityUtil<T> {
 
     private T entity;
     private String tableName;
     private List<Field> fields=new LinkedList<>();
+    //     1-имя поля, 2-имя столбца
+    private Map<String,String> columnNames = new HashMap();
 
     public EntityUtil(T entity) {
         this.entity = entity;
@@ -34,14 +38,18 @@ public class EntityUtil<T> {
         return this.fields;
      }
 
-    public Field getFieldByColumnName(String name) {
-        for(Field f : fields) {
-            if(f.getName().equals(name)) {
-                return f;
+    public Map<String,String> getColumnNames() {
+        return this.columnNames;
+    }
+
+    public Field getIdField() {
+        for(Field field : this.fields) {
+            Annotation annotation = field.getAnnotation(Id.class);
+            if(annotation!=null) {
+                return field;
             }
         }
-
-        throw new NotFoundException("Field not found");
+        throw new NotFoundException("Id annotation not found");
     }
 
     /* --------------------------------------------*/
@@ -49,7 +57,7 @@ public class EntityUtil<T> {
     private boolean isEntity() {
         Annotation annotation = getAnnotationByClass(Entity.class);
         if(annotation==null) {
-            throw new EntityAnnotationNotFound("Entity annotation not found");
+            throw new NotFoundException("Entity annotation not found");
         }
         return true;
     }
@@ -65,6 +73,7 @@ public class EntityUtil<T> {
             field.setAccessible(true);
             Column column = ((Column) field.getAnnotation(Column.class));
             if(column!=null) {
+                this.columnNames.put(field.getName(),column.name());
                 this.fields.add(field);
             }
         }

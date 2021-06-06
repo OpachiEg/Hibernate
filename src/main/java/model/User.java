@@ -1,9 +1,6 @@
 package model;
 
-import annotations.Column;
-import annotations.Entity;
-import annotations.Id;
-import annotations.Table;
+import annotations.*;
 import lombok.Data;
 
 @Data
@@ -12,7 +9,7 @@ import lombok.Data;
 public class User {
 
     @Id
-    @Column(name = "id", nullable = false)
+    @Column(name = "user_id", nullable = false)
     private Integer id;
     @Column(name = "login", nullable = false)
     private String login;
