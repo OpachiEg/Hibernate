@@ -31,45 +31,6 @@ public class TableRegistry {
         }
     }
 
-    public void addAllNotCreatedFields() throws SQLException, InstantiationException, IllegalAccessException {
-        Set<Class<?>> tableClasses = loadAllTableClasses();
-        List<String> tableNames = loadAllTableNames(tableClasses);
-
-        for(String tableName : tableNames) {
-            String request = "select column_name  from INFORMATION_SCHEMA.columns where table_name=" + "'" + tableName + "'";
-            Statement statement = ConnectionUtil.getConnection().createStatement();
-            statement.execute(request);
-            ResultSet resultSet = statement.getResultSet();
-
-            TableMapper tableMapper = new TableMapper(getClassByTableName(tableName,tableClasses).newInstance());
-            boolean read = false;
-            while(read = resultSet.next()) {
-                tableMapper.getAllNotCreatedFieldNames(resultSet);
-            }
-
-            for(Object field : tableMapper.getFields()) {
-                Field f = (Field) field;
-                Annotation annotation = f.getAnnotation(OneToOne.class);
-                if(annotation!=null) {
-                    String request1 = "ALTER TABLE " + tableName + " ADD " + f.getAnnotation(Column.class).name() + " BIGINT";
-                    Statement statement1 = ConnectionUtil.getConnection().createStatement();
-                    statement1.execute(request1);
-
-                    EntityUtil entityUtil = new EntityUtil(f.getType().newInstance());
-                    String request2 = "ALTER TABLE " + tableName + " ADD FOREIGN KEY (" + f.getAnnotation(Column.class).name() + ") REFERENCES " + f.getType().getAnnotation(Table.class).name() + " (" + entityUtil.getColumnNames().get(entityUtil.getIdField().getName()) + ")" ;
-                    System.out.println(request2);
-                    Statement statement2 = ConnectionUtil.getConnection().createStatement();
-                    statement2.execute(request2);
-                }
-                else {
-                    String request1 = "ALTER TABLE " + tableName + " ADD " + f.getAnnotation(Column.class).name() + " " + BasicTypeRegistry.getTypes().get(f.getType().getTypeName());
-                    Statement statement1 = ConnectionUtil.getConnection().createStatement();
-                    statement1.execute(request1);
-                }
-            }
-        }
-    }
-
     private Set<Class<?>> loadAllTableClasses() {
         Reflections reflections = new Reflections("model");
         Set<Class<?>> classes = reflections.getTypesAnnotatedWith(Table.class);
@@ -98,5 +59,48 @@ public class TableRegistry {
         return tableMapper.fieldsToString();
     }
 
+    /* ------------------------------------- */
+
+    public void addAllNotCreatedFields() throws SQLException, InstantiationException, IllegalAccessException {
+        Set<Class<?>> tableClasses = loadAllTableClasses();
+        List<String> tableNames = loadAllTableNames(tableClasses);
+
+        for(String tableName : tableNames) {
+            String request = "select column_name  from INFORMATION_SCHEMA.columns where table_name=" + "'" + tableName + "'";
+            Statement statement = ConnectionUtil.getConnection().createStatement();
+            statement.execute(request);
+            ResultSet resultSet = statement.getResultSet();
+
+            TableMapper tableMapper = new TableMapper(getClassByTableName(tableName,tableClasses).newInstance());
+            while(resultSet.next()) {
+                tableMapper.getAllNotCreatedFieldNames(resultSet);
+            }
+
+            for(Object field : tableMapper.getFields()) {
+                Field f = (Field) field;
+                Annotation annotation = f.getAnnotation(OneToOne.class);
+                if(annotation!=null) {
+                    addColumn(tableName,f.getAnnotation(Column.class).name(),"BIGINT");
+
+                    EntityUtil entityUtil = new EntityUtil(f.getType().newInstance());
+                    String request2 = "ALTER TABLE " + tableName + " ADD FOREIGN KEY (" + f.getAnnotation(Column.class).name() + ") REFERENCES " + f.getType().getAnnotation(Table.class).name() + " (" + entityUtil.getColumnNames().get(entityUtil.getIdField().getName()) + ")" ;
+                    System.out.println(request2);
+                    Statement statement2 = ConnectionUtil.getConnection().createStatement();
+                    statement2.execute(request2);
+                    statement2.close();
+                }
+                else {
+                    addColumn(tableName,f.getAnnotation(Column.class).name(),BasicTypeRegistry.getTypes().get(f.getType().getTypeName()));
+                }
+            }
+        }
+    }
+
+    private void addColumn(String tableName, String columnName, String type) throws SQLException {
+        String request = "ALTER TABLE " + tableName + " ADD " + columnName + " " + type;
+        Statement statement = ConnectionUtil.getConnection().createStatement();
+        statement.execute(request);
+        statement.close();
+    }
 
 }
