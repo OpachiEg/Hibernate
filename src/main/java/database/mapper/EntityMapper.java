@@ -46,7 +46,19 @@ public class EntityMapper<T> implements Mapper {
 
         for (Field field : fields) {
             field.setAccessible(true);
-            stringBuilder.append(columnNames.get(field.getName()) + ",");
+            Annotation annotation = field.getAnnotation(OneToOne.class);
+            if(annotation!=null) {
+                String columnName = columnNames.get(field.getName());
+                if(!columnName.endsWith("_id")) {
+                    stringBuilder.append(columnName + "_id");
+                }
+                else {
+                    stringBuilder.append(columnName);
+                }
+            }
+            else {
+                stringBuilder.append(columnNames.get(field.getName()) + ",");
+            }
         }
 
         return RequestUtil.deleteExtraComma(stringBuilder);
@@ -56,10 +68,19 @@ public class EntityMapper<T> implements Mapper {
         StringBuilder stringBuilder = new StringBuilder();
 
         for (Field field : fields) {
-            if (field.getType().getTypeName().equals("java.lang.String")) {
-                stringBuilder.append(String.format("'%s'", field.get(entity)) + ",");
-            } else {
-                stringBuilder.append(field.get(entity) + ",");
+            field.setAccessible(true);
+            Annotation annotation = field.getAnnotation(OneToOne.class);
+            if(annotation!=null) {
+                Object value = field.get(entity);
+                EntityUtil entityUtil = new EntityUtil(value);
+                stringBuilder.append(entityUtil.getIdField().get(value));
+            }
+            else {
+                if (field.getType().getTypeName().equals("java.lang.String")) {
+                    stringBuilder.append(String.format("'%s'", field.get(entity)) + ",");
+                } else {
+                    stringBuilder.append(field.get(entity) + ",");
+                }
             }
         }
 

@@ -2,6 +2,6 @@ package database.mapper;
 
 public interface Mapper {
 
-    String fieldsToString();
+    String fieldsToString() throws IllegalAccessException, InstantiationException;
 
 }

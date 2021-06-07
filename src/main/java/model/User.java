@@ -13,7 +13,12 @@ public class User {
     private Integer id;
     @Column(name = "login", nullable = false)
     private String login;
+    @Column(name = "name", nullable = false)
+    private String name;
     @Column(name = "active", nullable = false)
     private Boolean active;
+    @OneToOne
+    @Column(name = "passport_id", nullable = false)
+    private Passport passport;
 
 }
