@@ -2,23 +2,17 @@ package database.mapper;
 
 import annotations.*;
 import database.registry.BasicTypeRegistry;
-import database.util.ConnectionUtil;
 import database.util.EntityUtil;
 import database.util.RequestUtil;
-import javafx.scene.control.Tab;
 
-import javax.swing.border.EmptyBorder;
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Logger;
 
 public class EntityMapper<T> implements Mapper {
 
@@ -84,6 +78,40 @@ public class EntityMapper<T> implements Mapper {
         }
 
         return RequestUtil.deleteExtraComma(stringBuilder);
+    }
+
+    /* ------------------------------------------------- */
+
+    public String mapEntityToUpdateRequest() throws IllegalAccessException, InstantiationException {
+        EntityUtil entityUtil = new EntityUtil(entity);
+        Map<String,String> columnNames = entityUtil.getColumnNames();
+        Field idField = entityUtil.getIdField();
+        StringBuilder stringBuilder = new StringBuilder("UPDATE " + entityUtil.getTableName() + " SET ");
+
+        for(Object f : entityUtil.getFields()) {
+            Field field = (Field) f;
+            if(field.getAnnotation(Id.class)==null) {
+                if (field.getAnnotation(OneToOne.class) != null) {
+                    Object value = field.get(entity);
+                    if (value != null) {
+                        EntityUtil entityUtil1 = new EntityUtil(value);
+                        stringBuilder.append(columnNames.get(field.getName()) + "=" + entityUtil1.getIdField().get(value) + ",");
+                    }
+                } else {
+                    if (field.getType().getTypeName().equals("java.lang.String")) {
+                        stringBuilder.append(columnNames.get(field.getName()) + "=" + "'" + field.get(entity) + "'" + ",");
+                    }
+                    else {
+                        stringBuilder.append(columnNames.get(field.getName()) + "=" + field.get(entity) + ",");
+                    }
+                }
+            }
+        }
+
+        stringBuilder = new StringBuilder(RequestUtil.deleteExtraComma(stringBuilder));
+        stringBuilder.append(" WHERE " + idField.getAnnotation(Column.class).name() + "=" + idField.get(entity));
+
+        return stringBuilder.toString();
     }
 
     /* ------------------------------------------------- */

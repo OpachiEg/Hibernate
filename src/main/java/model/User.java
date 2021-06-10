@@ -9,18 +9,18 @@ import lombok.Data;
 public class User {
 
     @Id
-    @Column(name = "user_id", nullable = false)
+    @Column(name = "user_id")
     private Integer id;
-    @Column(name = "login", nullable = false)
+    @Column(name = "login")
     private String login;
-    @Column(name = "name", nullable = false)
+    @Column(name = "name")
     private String name;
-    @Column(name = "surname", nullable = false)
+    @Column(name = "surname")
     private String surname;
-    @Column(name = "active", nullable = false)
+    @Column(name = "active")
     private Boolean active;
     @OneToOne
-    @Column(name = "passport_id", nullable = false)
+    @Column(name = "passport_id")
     private Passport passport;
 
 }

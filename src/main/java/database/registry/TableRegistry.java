@@ -22,9 +22,17 @@ import java.util.stream.Collectors;
 public class TableRegistry {
 
     private Connection connection;
+    private static TableRegistry tableRegistry;
 
-    public TableRegistry() {
+    private TableRegistry() {
         this.connection = ConnectionUtil.setNewConnection();
+    }
+
+    public static TableRegistry getTableRegistry() {
+        if(tableRegistry==null) {
+            return new TableRegistry();
+        }
+        return tableRegistry;
     }
 
     public void addAllTables() throws InstantiationException, IllegalAccessException, SQLException {

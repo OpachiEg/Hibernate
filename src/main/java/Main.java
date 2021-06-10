@@ -1,45 +1,27 @@
+import database.mapper.EntityMapper;
+import database.registry.RegistryService;
 import database.registry.TableRegistry;
 import database.session.Session;
 import database.registry.BasicTypeRegistry;
+import database.util.ConnectionUtil;
+import model.Passport;
 import model.User;
 
 import java.sql.SQLException;
 
 public class Main {
 
-    public static void main(String[] args) throws SQLException {
+    public static void main(String[] args) throws SQLException, InstantiationException, IllegalAccessException {
+        Passport passport = new Passport();
+        passport.setId(1);
 
         User user = new User();
+        user.setId(6);
         user.setLogin("Egor7");
         user.setActive(true);
+        user.setPassport(passport);
 
-        new Thread(() ->
-            BasicTypeRegistry.setTypes()
-        ).start();
-
-        TableRegistry tableRegistry = new TableRegistry();
-        new Thread(() -> {
-            try {
-                tableRegistry.addAllTables();
-            } catch (InstantiationException e) {
-                e.printStackTrace();
-            } catch (IllegalAccessException e) {
-                e.printStackTrace();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        }).start();
-        new Thread(() -> {
-            try {
-                tableRegistry.addAllNotCreatedFields();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            } catch (InstantiationException e) {
-                e.printStackTrace();
-            } catch (IllegalAccessException e) {
-                e.printStackTrace();
-            }
-        }).start();
+        RegistryService.startRegistryServices();
 
         Session session = new Session();
         session.createReadWriteTransaction();

@@ -24,10 +24,23 @@ public class Session {
         EntityUtil entityUtil = new EntityUtil(entity);
         final String tableName = entityUtil.getTableName();
 
-        entityUtil.getIdField().set(entity,getId(tableName));
+        if((Integer) entityUtil.getIdField().get(entity)==0) {
+            entityUtil.getIdField().set(entity,getId(tableName));
 
+            EntityMapper entityMapper = new EntityMapper(entity,this.CONNECTION);
+            String request = entityMapper.mapEntityToInsertSqlRequest();
+
+            Statement statement = this.CONNECTION.createStatement();
+            statement.execute(request);
+        }
+        else {
+            update(entity);
+        }
+    }
+
+    public void update(Object entity) throws InstantiationException, IllegalAccessException, SQLException {
         EntityMapper entityMapper = new EntityMapper(entity,this.CONNECTION);
-        String request = entityMapper.mapEntityToInsertSqlRequest();
+        String request = entityMapper.mapEntityToUpdateRequest();
 
         Statement statement = this.CONNECTION.createStatement();
         statement.execute(request);
