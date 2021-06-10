@@ -71,7 +71,7 @@ public class EntityUtil<T> {
 
         for(Field field : fields) {
             field.setAccessible(true);
-            Column column = ((Column) field.getAnnotation(Column.class));
+            Column column = field.getAnnotation(Column.class);
             if(column!=null) {
                 this.columnNames.put(field.getName(),column.name());
                 this.fields.add(field);

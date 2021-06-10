@@ -1,16 +1,19 @@
 package database.mapper;
 
-import annotations.Entity;
-import annotations.Id;
-import annotations.OneToOne;
+import annotations.*;
 import database.registry.BasicTypeRegistry;
+import database.util.ConnectionUtil;
 import database.util.EntityUtil;
 import database.util.RequestUtil;
+import javafx.scene.control.Tab;
 
+import javax.swing.border.EmptyBorder;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
+import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
@@ -24,13 +27,17 @@ public class EntityMapper<T> implements Mapper {
     private List<Field> fields;
     private Map<String, String> columnNames;
 
-    public EntityMapper(T entity) throws IllegalAccessException, InstantiationException {
+    private Connection connection;
+
+    public EntityMapper(T entity, Connection connection) throws IllegalAccessException, InstantiationException {
         this.entity = entity;
 
         EntityUtil<T> entityUtil = new EntityUtil(entity);
         this.tableName = entityUtil.getTableName();
         this.fields = entityUtil.getFields();
         this.columnNames = entityUtil.getColumnNames();
+
+        this.connection = connection;
     }
 
     /* ------------------------------------------------ */
@@ -40,23 +47,15 @@ public class EntityMapper<T> implements Mapper {
         return request;
     }
 
-    public String fieldsToString() {
+    public String fieldsToString() throws IllegalAccessException {
         StringBuilder stringBuilder = new StringBuilder();
         Map<String, String> types = BasicTypeRegistry.getTypes();
 
         for (Field field : fields) {
             field.setAccessible(true);
-            Annotation annotation = field.getAnnotation(OneToOne.class);
-            if(annotation!=null) {
-                String columnName = columnNames.get(field.getName());
-                if(!columnName.endsWith("_id")) {
-                    stringBuilder.append(columnName + "_id");
-                }
-                else {
-                    stringBuilder.append(columnName);
-                }
-            }
-            else {
+            if (field.getAnnotation(OneToOne.class)!=null && field.get(entity)==null) {
+                continue;
+            } else {
                 stringBuilder.append(columnNames.get(field.getName()) + ",");
             }
         }
@@ -69,13 +68,13 @@ public class EntityMapper<T> implements Mapper {
 
         for (Field field : fields) {
             field.setAccessible(true);
-            Annotation annotation = field.getAnnotation(OneToOne.class);
-            if(annotation!=null) {
+            if (field.getAnnotation(OneToOne.class) != null) {
                 Object value = field.get(entity);
-                EntityUtil entityUtil = new EntityUtil(value);
-                stringBuilder.append(entityUtil.getIdField().get(value));
-            }
-            else {
+                if (value != null) {
+                    EntityUtil entityUtil = new EntityUtil(value);
+                    stringBuilder.append(entityUtil.getIdField().get(value));
+                }
+            } else {
                 if (field.getType().getTypeName().equals("java.lang.String")) {
                     stringBuilder.append(String.format("'%s'", field.get(entity)) + ",");
                 } else {
@@ -101,24 +100,35 @@ public class EntityMapper<T> implements Mapper {
     }
 
     public T mapResultSetToEntity(ResultSet resultSet) throws SQLException, IllegalAccessException, InstantiationException, NoSuchFieldException {
-        T entity = this.entity;
         int i = 0;
 
         while (i <= fields.size() - 1) {
             Field field = fields.get(i);
-            Field field1 = entity.getClass().getDeclaredField(field.getName());
-            field1.setAccessible(true);
-            if (field.getType().getTypeName().equals("java.lang.Integer")) {
-                field1.set(entity, resultSet.getInt(columnNames.get(field.getName())));
-            } else if (field.getType().getTypeName().equals("java.lang.String")) {
-                field1.set(entity, resultSet.getString(columnNames.get(field.getName())));
-            } else if (field.getType().getTypeName().equals("java.lang.Boolean")) {
-                field1.set(entity, resultSet.getBoolean(columnNames.get(field.getName())));
+            field.setAccessible(true);
+            if (field.getAnnotation(OneToOne.class) != null) {
+                Integer innerId = resultSet.getInt(columnNames.get(field.getName()));
+                if (innerId != 0) {
+                    EntityUtil entityUtil = new EntityUtil(field.getType().newInstance());
+                    String request = "SELECT * FROM " + field.getType().getAnnotation(Table.class).name() + " WHERE " + entityUtil.getIdField().getAnnotation(Column.class).name() + "=" + innerId;
+                    Statement statement = connection.createStatement();
+                    statement.execute(request);
+                    statement.getResultSet().next();
+                    EntityMapper entityMapper = new EntityMapper(field.getType().newInstance(),connection);
+                    field.set(entity, entityMapper.mapResultSetToEntity(statement.getResultSet()));
+                }
+            } else {
+                if (field.getType().getTypeName().equals("java.lang.Integer")) {
+                    field.set(entity, resultSet.getInt(columnNames.get(field.getName())));
+                } else if (field.getType().getTypeName().equals("java.lang.String")) {
+                    field.set(entity, resultSet.getString(columnNames.get(field.getName())));
+                } else if (field.getType().getTypeName().equals("java.lang.Boolean")) {
+                    field.set(entity, resultSet.getBoolean(columnNames.get(field.getName())));
+                }
             }
             i++;
         }
+
         return entity;
     }
-
 
 }

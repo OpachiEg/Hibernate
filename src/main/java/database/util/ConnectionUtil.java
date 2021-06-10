@@ -6,11 +6,16 @@ import java.sql.SQLException;
 
 public class ConnectionUtil {
 
+    private static final String URL = "jdbc:postgresql://localhost:5430/hibernate";
+    private static final String USER = "postgres";
+    private static final String PASSWORD = "traveller0202";
+    private static Connection connection;
+
     public static Connection getConnection() {
-        final String URL = "jdbc:postgresql://localhost:5430/hibernate";
-        final String USER = "postgres";
-        final String PASSWORD = "traveller0202";
-        Connection connection = null;
+        return connection;
+    }
+
+    public static Connection setNewConnection() {
         try {
             connection = DriverManager.getConnection(URL,USER,PASSWORD);
         } catch (SQLException e) {

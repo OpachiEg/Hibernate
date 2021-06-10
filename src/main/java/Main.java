@@ -1,33 +1,46 @@
-import database.mapper.EntityMapper;
-import database.mapper.TableMapper;
 import database.registry.TableRegistry;
 import database.session.Session;
 import database.registry.BasicTypeRegistry;
-import model.Passport;
 import model.User;
 
 import java.sql.SQLException;
 
 public class Main {
 
-    public static void main(String[] args) throws IllegalAccessException, InstantiationException, SQLException, NoSuchFieldException {
-        Passport passport = new Passport();
-        passport.setId(1L);
+    public static void main(String[] args) throws SQLException {
 
         User user = new User();
-        user.setId(6);
-        user.setLogin("Egor5");
+        user.setLogin("Egor7");
         user.setActive(true);
-        user.setPassport(passport);
 
-
-        BasicTypeRegistry.setTypes();
+        new Thread(() ->
+            BasicTypeRegistry.setTypes()
+        ).start();
 
         TableRegistry tableRegistry = new TableRegistry();
-        tableRegistry.addAllTables();
-        tableRegistry.addAllNotCreatedFields();
+        new Thread(() -> {
+            try {
+                tableRegistry.addAllTables();
+            } catch (InstantiationException e) {
+                e.printStackTrace();
+            } catch (IllegalAccessException e) {
+                e.printStackTrace();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }).start();
+        new Thread(() -> {
+            try {
+                tableRegistry.addAllNotCreatedFields();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            } catch (InstantiationException e) {
+                e.printStackTrace();
+            } catch (IllegalAccessException e) {
+                e.printStackTrace();
+            }
+        }).start();
 
-        /*
         Session session = new Session();
         session.createReadWriteTransaction();
         try {
@@ -38,9 +51,6 @@ public class Main {
         }
         session.commitTransaction();
         session.close();
-
-         */
-
 
     }
 

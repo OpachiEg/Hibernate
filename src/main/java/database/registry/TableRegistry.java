@@ -11,6 +11,7 @@ import org.reflections.Reflections;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
+import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -20,13 +21,19 @@ import java.util.stream.Collectors;
 
 public class TableRegistry {
 
+    private Connection connection;
+
+    public TableRegistry() {
+        this.connection = ConnectionUtil.setNewConnection();
+    }
+
     public void addAllTables() throws InstantiationException, IllegalAccessException, SQLException {
         Set<Class<?>> tableClasses = loadAllTableClasses();
         List<String> tableNames = loadAllTableNames(tableClasses);
 
         for(String tableName : tableNames) {
             String request = "CREATE TABLE IF NOT EXISTS " + tableName + " (" + fieldsToString(getClassByTableName(tableName,tableClasses)) + ")";
-            Statement statement = ConnectionUtil.getConnection().createStatement();
+            Statement statement = connection.createStatement();
             statement.execute(request);
         }
     }
@@ -67,7 +74,7 @@ public class TableRegistry {
 
         for(String tableName : tableNames) {
             String request = "select column_name  from INFORMATION_SCHEMA.columns where table_name=" + "'" + tableName + "'";
-            Statement statement = ConnectionUtil.getConnection().createStatement();
+            Statement statement = connection.createStatement();
             statement.execute(request);
             ResultSet resultSet = statement.getResultSet();
 
@@ -85,7 +92,7 @@ public class TableRegistry {
                     EntityUtil entityUtil = new EntityUtil(f.getType().newInstance());
                     String request2 = "ALTER TABLE " + tableName + " ADD FOREIGN KEY (" + f.getAnnotation(Column.class).name() + ") REFERENCES " + f.getType().getAnnotation(Table.class).name() + " (" + entityUtil.getColumnNames().get(entityUtil.getIdField().getName()) + ")" ;
                     System.out.println(request2);
-                    Statement statement2 = ConnectionUtil.getConnection().createStatement();
+                    Statement statement2 = connection.createStatement();
                     statement2.execute(request2);
                     statement2.close();
                 }
@@ -98,7 +105,7 @@ public class TableRegistry {
 
     private void addColumn(String tableName, String columnName, String type) throws SQLException {
         String request = "ALTER TABLE " + tableName + " ADD " + columnName + " " + type;
-        Statement statement = ConnectionUtil.getConnection().createStatement();
+        Statement statement = connection.createStatement();
         statement.execute(request);
         statement.close();
     }

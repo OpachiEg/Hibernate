@@ -5,10 +5,7 @@ import database.util.ConnectionUtil;
 import database.util.EntityUtil;
 
 import java.lang.reflect.Field;
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.List;
 
 public class Session {
@@ -17,7 +14,7 @@ public class Session {
     private boolean flag = false;
 
     public Session() throws SQLException {
-        this.CONNECTION = ConnectionUtil.getConnection();
+        this.CONNECTION = ConnectionUtil.setNewConnection();
         this.CONNECTION.setAutoCommit(false);
     }
 
@@ -26,9 +23,10 @@ public class Session {
     public void save(Object entity) throws SQLException, InstantiationException, IllegalAccessException {
         EntityUtil entityUtil = new EntityUtil(entity);
         final String tableName = entityUtil.getTableName();
-        final List<Field> fields = entityUtil.getFields();
 
-        EntityMapper entityMapper = new EntityMapper(entity);
+        entityUtil.getIdField().set(entity,getId(tableName));
+
+        EntityMapper entityMapper = new EntityMapper(entity,this.CONNECTION);
         String request = entityMapper.mapEntityToInsertSqlRequest();
 
         Statement statement = this.CONNECTION.createStatement();
@@ -44,7 +42,7 @@ public class Session {
         ResultSet resultSet = statement.getResultSet();
         resultSet.next();
 
-        EntityMapper<T> entityMapper = new EntityMapper<>(clazz.newInstance());
+        EntityMapper<T> entityMapper = new EntityMapper<>(clazz.newInstance(),this.CONNECTION);
 
         return entityMapper.mapResultSetToEntity(resultSet);
     }
@@ -57,7 +55,7 @@ public class Session {
         statement.execute("SELECT * FROM " + TABLE_NAME);
         ResultSet resultSet = statement.getResultSet();
 
-        EntityMapper<T> entityMapper = new EntityMapper(clazz.newInstance());
+        EntityMapper<T> entityMapper = new EntityMapper(clazz.newInstance(), this.CONNECTION);
 
         return entityMapper.mapResultSetToListEntity(resultSet);
     }
@@ -85,6 +83,20 @@ public class Session {
 
     public void close() throws SQLException {
         this.CONNECTION.close();
+    }
+
+    /* ------------------------------------------------ */
+
+    private Integer getId(String tableName) throws SQLException {
+        String request = "SELECT * FROM " + tableName;
+        Statement statement = this.CONNECTION.createStatement();
+        statement.execute(request);
+        ResultSet resultSet = statement.getResultSet();
+        int counter = 1;
+        while(resultSet.next()) {
+            counter++;
+        }
+        return counter;
     }
 
 }
