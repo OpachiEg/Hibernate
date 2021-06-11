@@ -3,9 +3,11 @@ package database.registry;
 import annotations.Column;
 import annotations.OneToOne;
 import annotations.Table;
-import database.mapper.TableMapper;
-import database.util.ConnectionUtil;
-import database.util.EntityUtil;
+import database.mapper.tableMapper.TableMapper;
+import database.mapper.tableMapper.TableMapperFactory;
+import database.util.connectionUtil.ConnectionUtil;
+import database.util.entityUtil.EntityUtil;
+import database.util.entityUtil.EntityUtilFactory;
 import exceptions.NotFoundException;
 import org.reflections.Reflections;
 
@@ -25,7 +27,7 @@ public class TableRegistry {
     private static TableRegistry tableRegistry;
 
     private TableRegistry() {
-        this.connection = ConnectionUtil.setNewConnection();
+        this.connection = ConnectionUtil.getNewConnection();
     }
 
     public static TableRegistry getTableRegistry() {
@@ -70,7 +72,7 @@ public class TableRegistry {
     }
 
     public String fieldsToString(Class clazz) throws IllegalAccessException, InstantiationException {
-        TableMapper tableMapper = new TableMapper(clazz.newInstance());
+        TableMapper tableMapper = TableMapperFactory.getTableMapperFactory().getNewTableMapper(clazz.newInstance());
         return tableMapper.fieldsToString();
     }
 
@@ -81,31 +83,31 @@ public class TableRegistry {
         List<String> tableNames = loadAllTableNames(tableClasses);
 
         for(String tableName : tableNames) {
-            String request = "select column_name  from INFORMATION_SCHEMA.columns where table_name=" + "'" + tableName + "'";
+            String request = "SELECT COLUMN_NAME  FROM INFORMATION_SCHEMA.columns WHERE TABLE_NAME=" + "'" + tableName + "'";
             Statement statement = connection.createStatement();
             statement.execute(request);
             ResultSet resultSet = statement.getResultSet();
 
-            TableMapper tableMapper = new TableMapper(getClassByTableName(tableName,tableClasses).newInstance());
+            TableMapper tableMapper = TableMapperFactory.getTableMapperFactory().getNewTableMapper(getClassByTableName(tableName,tableClasses).newInstance());
             while(resultSet.next()) {
                 tableMapper.getAllNotCreatedFieldNames(resultSet);
             }
 
-            for(Object field : tableMapper.getFields()) {
-                Field f = (Field) field;
-                Annotation annotation = f.getAnnotation(OneToOne.class);
+            for(Object f : tableMapper.getFields()) {
+                Field field = (Field) f;
+                Annotation annotation = field.getAnnotation(OneToOne.class);
                 if(annotation!=null) {
-                    addColumn(tableName,f.getAnnotation(Column.class).name(),"BIGINT");
+                    addColumn(tableName,field.getAnnotation(Column.class).name(),"BIGINT");
 
-                    EntityUtil entityUtil = new EntityUtil(f.getType().newInstance());
-                    String request2 = "ALTER TABLE " + tableName + " ADD FOREIGN KEY (" + f.getAnnotation(Column.class).name() + ") REFERENCES " + f.getType().getAnnotation(Table.class).name() + " (" + entityUtil.getColumnNames().get(entityUtil.getIdField().getName()) + ")" ;
+                    EntityUtil entityUtil = EntityUtilFactory.getEntityUtilFactory().getNewEntityUtil(field.getType().newInstance());
+                    String request2 = "ALTER TABLE " + tableName + " ADD FOREIGN KEY (" + field.getAnnotation(Column.class).name() + ") REFERENCES " + field.getType().getAnnotation(Table.class).name() + " (" + entityUtil.getColumnNames().get(entityUtil.getIdField().getName()) + ")" ;
                     System.out.println(request2);
                     Statement statement2 = connection.createStatement();
                     statement2.execute(request2);
                     statement2.close();
                 }
                 else {
-                    addColumn(tableName,f.getAnnotation(Column.class).name(),BasicTypeRegistry.getTypes().get(f.getType().getTypeName()));
+                    addColumn(tableName,field.getAnnotation(Column.class).name(),BasicTypeRegistry.getTypes().get(field.getType().getTypeName()));
                 }
             }
         }

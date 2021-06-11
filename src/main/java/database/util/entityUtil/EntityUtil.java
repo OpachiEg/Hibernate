@@ -1,4 +1,4 @@
-package database.util;
+package database.util.entityUtil;
 
 import annotations.Column;
 import annotations.Entity;
@@ -6,13 +6,13 @@ import annotations.Id;
 import annotations.Table;
 import exceptions.NotFoundException;
 
-import java.io.File;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Logger;
 
 public class EntityUtil<T> {
 
@@ -22,7 +22,9 @@ public class EntityUtil<T> {
     //     1-имя поля, 2-имя столбца
     private Map<String,String> columnNames = new HashMap();
 
-    public EntityUtil(T entity) {
+    private final Logger LOG = Logger.getLogger(EntityUtil.class.getName());
+
+    protected EntityUtil(T entity) {
         this.entity = entity;
         if(isEntity()) {
             setTableName();
@@ -63,10 +65,12 @@ public class EntityUtil<T> {
     }
 
     private void setTableName() {
+        LOG.info("Setting table name");
         tableName = ((Table) getAnnotationByClass(Table.class)).name();
     }
 
     private void setFields() {
+        LOG.info("Setting fields");
         Field[] fields = entity.getClass().getDeclaredFields();
 
         for(Field field : fields) {

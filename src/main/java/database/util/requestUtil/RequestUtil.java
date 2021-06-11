@@ -1,4 +1,4 @@
-package database.util;
+package database.util.requestUtil;
 
 public class RequestUtil {
 

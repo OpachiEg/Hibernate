@@ -1,12 +1,14 @@
-package database.mapper;
+package database.mapper.tableMapper;
 
 import annotations.Column;
 import annotations.Id;
 import annotations.OneToOne;
 import annotations.Table;
+import database.mapper.Mapper;
 import database.registry.BasicTypeRegistry;
-import database.util.EntityUtil;
-import database.util.RequestUtil;
+import database.util.entityUtil.EntityUtil;
+import database.util.entityUtil.EntityUtilFactory;
+import database.util.requestUtil.RequestUtil;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
@@ -22,10 +24,10 @@ public class TableMapper<T> implements Mapper {
     private List<Field> fields;
     private Map<String,String> columnNames;
 
-    public TableMapper(T entity) throws IllegalAccessException, InstantiationException {
+    protected TableMapper(T entity) {
         this.entity = entity;
 
-        EntityUtil<T> entityUtil = new EntityUtil(entity);
+        EntityUtil<T> entityUtil = EntityUtilFactory.getEntityUtilFactory().getNewEntityUtil(entity);
         this.tableName = entityUtil.getTableName();
         this.fields = entityUtil.getFields();
         this.columnNames = entityUtil.getColumnNames();
@@ -45,7 +47,7 @@ public class TableMapper<T> implements Mapper {
             else if (annotation1 != null) {
                 Class<?> clazz = field.getType();
                 Table table = clazz.getAnnotation(Table.class);
-                EntityUtil entityUtil = new EntityUtil(clazz.newInstance());
+                EntityUtil entityUtil = EntityUtilFactory.getEntityUtilFactory().getNewEntityUtil(clazz.newInstance());
                 Column column = entityUtil.getIdField().getAnnotation(Column.class);
                 stringBuilder.append(columnNames.get(field.getName()) + " BIGINT REFERENCES " + table.name() + "(" + column.name() + ")" );
             }

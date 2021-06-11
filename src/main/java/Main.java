@@ -1,9 +1,6 @@
-import database.mapper.EntityMapper;
 import database.registry.RegistryService;
-import database.registry.TableRegistry;
 import database.session.Session;
-import database.registry.BasicTypeRegistry;
-import database.util.ConnectionUtil;
+import database.session.SessionFactory;
 import model.Passport;
 import model.User;
 
@@ -11,7 +8,7 @@ import java.sql.SQLException;
 
 public class Main {
 
-    public static void main(String[] args) throws SQLException, InstantiationException, IllegalAccessException {
+    public static void main(String[] args) throws SQLException {
         Passport passport = new Passport();
         passport.setId(1);
 
@@ -23,7 +20,7 @@ public class Main {
 
         RegistryService.startRegistryServices();
 
-        Session session = new Session();
+        Session session = SessionFactory.createNewSession();
         session.createReadWriteTransaction();
         try {
             session.save(user);

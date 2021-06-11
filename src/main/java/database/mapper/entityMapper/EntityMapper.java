@@ -1,9 +1,10 @@
-package database.mapper;
+package database.mapper.entityMapper;
 
 import annotations.*;
-import database.registry.BasicTypeRegistry;
-import database.util.EntityUtil;
-import database.util.RequestUtil;
+import database.mapper.Mapper;
+import database.util.entityUtil.EntityUtil;
+import database.util.entityUtil.EntityUtilFactory;
+import database.util.requestUtil.RequestUtil;
 
 import java.lang.reflect.Field;
 import java.sql.Connection;
@@ -19,16 +20,17 @@ public class EntityMapper<T> implements Mapper {
     private T entity;
     private String tableName;
     private List<Field> fields;
-    private Map<String, String> columnNames;
-
+    private Field idField;
+    private Map<String,String> columnNames;
     private Connection connection;
 
-    public EntityMapper(T entity, Connection connection) throws IllegalAccessException, InstantiationException {
+    protected EntityMapper(T entity, Connection connection) throws IllegalAccessException, InstantiationException {
         this.entity = entity;
 
-        EntityUtil<T> entityUtil = new EntityUtil(entity);
+        EntityUtil entityUtil = EntityUtilFactory.getEntityUtilFactory().getNewEntityUtil(entity);
         this.tableName = entityUtil.getTableName();
         this.fields = entityUtil.getFields();
+        this.idField = entityUtil.getIdField();
         this.columnNames = entityUtil.getColumnNames();
 
         this.connection = connection;
@@ -43,7 +45,6 @@ public class EntityMapper<T> implements Mapper {
 
     public String fieldsToString() throws IllegalAccessException {
         StringBuilder stringBuilder = new StringBuilder();
-        Map<String, String> types = BasicTypeRegistry.getTypes();
 
         for (Field field : fields) {
             field.setAccessible(true);
@@ -65,7 +66,7 @@ public class EntityMapper<T> implements Mapper {
             if (field.getAnnotation(OneToOne.class) != null) {
                 Object value = field.get(entity);
                 if (value != null) {
-                    EntityUtil entityUtil = new EntityUtil(value);
+                    EntityUtil entityUtil = EntityUtilFactory.getEntityUtilFactory().getNewEntityUtil(value);
                     stringBuilder.append(entityUtil.getIdField().get(value));
                 }
             } else {
@@ -82,19 +83,16 @@ public class EntityMapper<T> implements Mapper {
 
     /* ------------------------------------------------- */
 
-    public String mapEntityToUpdateRequest() throws IllegalAccessException, InstantiationException {
-        EntityUtil entityUtil = new EntityUtil(entity);
-        Map<String,String> columnNames = entityUtil.getColumnNames();
-        Field idField = entityUtil.getIdField();
-        StringBuilder stringBuilder = new StringBuilder("UPDATE " + entityUtil.getTableName() + " SET ");
+    public String mapEntityToUpdateRequest() throws IllegalAccessException {
+        StringBuilder stringBuilder = new StringBuilder("UPDATE " + tableName + " SET ");
 
-        for(Object f : entityUtil.getFields()) {
+        for(Object f : fields) {
             Field field = (Field) f;
             if(field.getAnnotation(Id.class)==null) {
                 if (field.getAnnotation(OneToOne.class) != null) {
                     Object value = field.get(entity);
                     if (value != null) {
-                        EntityUtil entityUtil1 = new EntityUtil(value);
+                        EntityUtil entityUtil1 = EntityUtilFactory.getEntityUtilFactory().getNewEntityUtil(value);
                         stringBuilder.append(columnNames.get(field.getName()) + "=" + entityUtil1.getIdField().get(value) + ",");
                     }
                 } else {
@@ -118,9 +116,8 @@ public class EntityMapper<T> implements Mapper {
 
     public List<T> mapResultSetToListEntity(ResultSet resultSet) throws SQLException, IllegalAccessException, InstantiationException, NoSuchFieldException {
         List<T> result = new LinkedList<>();
-        boolean read = false;
 
-        while (read = resultSet.next()) {
+        while (resultSet.next()) {
             result.add(mapResultSetToEntity(resultSet));
         }
 
@@ -136,7 +133,7 @@ public class EntityMapper<T> implements Mapper {
             if (field.getAnnotation(OneToOne.class) != null) {
                 Integer innerId = resultSet.getInt(columnNames.get(field.getName()));
                 if (innerId != 0) {
-                    EntityUtil entityUtil = new EntityUtil(field.getType().newInstance());
+                    EntityUtil entityUtil = EntityUtilFactory.getEntityUtilFactory().getNewEntityUtil(field.getType().newInstance());
                     String request = "SELECT * FROM " + field.getType().getAnnotation(Table.class).name() + " WHERE " + entityUtil.getIdField().getAnnotation(Column.class).name() + "=" + innerId;
                     Statement statement = connection.createStatement();
                     statement.execute(request);
